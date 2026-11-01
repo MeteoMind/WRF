@@ -825,7 +825,10 @@ use module_model_constants, only :  piconst
    SIGMA_ZED = stdh_urb
 
  !Calculate Wind Direction and Assign Appropriae lf_urb
-   WDR = (180.0/PI)*ATAN2(U10,V10)
+ ! From the lowest model level's wind, an input: U10 and V10 are outputs of
+ ! this routine and are not computed yet, so they would hold the previous
+ ! step's diagnostic.
+   WDR = (180.0/PI)*ATAN2(U1,V1)
    
    IF(WDR.ge.0.0.and.WDR.lt.22.5)THEN
      lambda_f = lf_urb(1)
