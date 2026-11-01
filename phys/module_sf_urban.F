@@ -678,6 +678,7 @@ use module_model_constants, only :  piconst
    REAL :: TSP, CHS_LOCAL, CHS2_LOCAL
 
    REAL :: WDR,HGT2,BW,DHGT
+   REAL :: STW, lambda_f_mean   ! street width [m], sector-mean frontal index [-]
    REAL, parameter :: VonK = 0.4
    REAL :: lambda_f,alpha_macd,beta_macd,lambda_fr
    REAL :: lambda_p, vegfrac
@@ -801,27 +802,32 @@ use module_model_constants, only :  piconst
   !write(mesg,*) 'Building Surf Ratio',lb_urb
   !WRITE_MESSAGE(mesg)
  
- !Calculate Building Width and Street Width Based on BEP formulation
- if(lb_urb.gt.lp_urb)THEN             ! building surface to plan area ratio > plain area fraction
-  BW=2.*hgt_urb*lp_urb/(lb_urb-lp_urb)
-  SW=2.*hgt_urb*lp_urb*((frc_urb/lp_urb)-1.)/(lb_urb-lp_urb)
-  !write(mesg,*) 'Building Width',BW
-  !WRITE_MESSAGE(mesg)
-  !write(mesg,*) 'Street Width',SW
-  !WRITE_MESSAGE(mesg)
- elseif (SW.lt.0.0.or.BW.lt.0.0)then
-  BW=BUILDING_WIDTH(1)
-  SW=STREET_WIDTH(1)
- else
-  BW=BUILDING_WIDTH(1)
-  SW=STREET_WIDTH(1)
- end if
- 
+ ! Building and street width for a regular array of square cuboids (Kanda
+ ! et al. 2005): with lambda_p = B**2/(B+W)**2 and lambda_f = H*B/(B+W)**2,
+ ! B = H*lambda_p/lambda_f and B + W = B/SQRT(lambda_p). The geometry takes
+ ! the mean of the four sector frontal indices, so it does not change with
+ ! the wind; the roughness below keeps the sector the wind blows from. The
+ ! bounds keep the widths physical as either index nears zero or one.
+ ! Replaces BEP's relation, singular as lb_urb approaches lp_urb and
+ ! negative where frc_urb < lp_urb, which also stored the street width in
+ ! SW, this routine's upward shortwave output. Without a frontal index or
+ ! plan fraction, the table's widths, as before.
+   lambda_f_mean = SUM(lf_urb) / 4.
+   IF (lambda_f_mean > 0. .AND. lp_urb > 0.) THEN
+     BW = hgt_urb * lp_urb / lambda_f_mean
+     STW = BW * (1. / SQRT(MIN(lp_urb, 1.)) - 1.)
+     BW = MIN(MAX(BW, 5.), 100.)
+     STW = MIN(MAX(STW, 2.), 200.)
+   ELSE
+     BW = BUILDING_WIDTH(1)
+     STW = STREET_WIDTH(1)
+   END IF
+
  !Assign NUDAPT Parameters
    ZR = mh_urb
     R = lp_urb
     RW = 1.0-R
-   HGT = mh_urb/(BW+SW)
+   HGT = mh_urb/(BW+STW)
    SIGMA_ZED = stdh_urb
 
  !Calculate Wind Direction and Assign Appropriae lf_urb
@@ -870,7 +876,7 @@ use module_model_constants, only :  piconst
         WRITE_MESSAGE(mesg)
       end if
 
-      lambda_fr  = stdh_urb/(SW + BW)
+      lambda_fr  = stdh_urb/(STW + BW)
 
        Z0R = ZR * ( 1.0 - ZDC/ZR) &
              * exp ( -(0.5 * beta_macd * Cd / (VonK**2) &
