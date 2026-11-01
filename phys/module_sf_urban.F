@@ -944,6 +944,9 @@ use module_model_constants, only :  piconst
    END IF
 
    IF( ZDC+Z0C+2. >= ZA) THEN
+    WRITE(mesg,'(A,F8.2,A,F8.2,A)') 'urban: ZDC + Z0C + 2 m = ', ZDC+Z0C+2., &
+                                    ' m, first level ZA = ', ZA, ' m'
+    WRITE_MESSAGE(mesg)
     FATAL_ERROR("ZDC + Z0C + 2m is larger than the 1st WRF level - Stop in subroutine urban - change ZDC and Z0C" ) 
    END IF
 
