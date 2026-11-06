@@ -766,7 +766,13 @@ use module_model_constants, only :  piconst
 
 ! Glotfelty, 2012/07/05, NUDAPT Modification
 
- if(mh_urb.gt.0.0 .and. .not. distributed_aerodynamics_option)THEN 
+ ! The morphology has to be whole. A dataset pixel holding one small building
+ ! keeps its height while its plan fraction, frontal index and height spread
+ ! round to zero, and lambda_f = 0 gives Z0C = 0, then a NaN in the canyon wind
+ ! that spreads silently until radiation faults on it. Such a cell keeps the
+ ! table's values read above.
+ if(mh_urb.gt.0.0 .and. lp_urb.gt.0.0 .and. stdh_urb.gt.0.0 .and. &
+    MINVAL(lf_urb).gt.0.0 .and. .not. distributed_aerodynamics_option)THEN 
   !write(mesg,*) 'Mean Height NUDAPT',mh_urb
   !WRITE_MESSAGE(mesg)
   !write(mesg,*) 'Mean Height Table',ZR
@@ -810,18 +816,12 @@ use module_model_constants, only :  piconst
  ! bounds keep the widths physical as either index nears zero or one.
  ! Replaces BEP's relation, singular as lb_urb approaches lp_urb and
  ! negative where frc_urb < lp_urb, which also stored the street width in
- ! SW, this routine's upward shortwave output. Without a frontal index or
- ! plan fraction, the table's widths, as before.
+ ! SW, this routine's upward shortwave output.
    lambda_f_mean = SUM(lf_urb) / 4.
-   IF (lambda_f_mean > 0. .AND. lp_urb > 0.) THEN
-     BW = hgt_urb * lp_urb / lambda_f_mean
-     STW = BW * (1. / SQRT(MIN(lp_urb, 1.)) - 1.)
-     BW = MIN(MAX(BW, 5.), 100.)
-     STW = MIN(MAX(STW, 2.), 200.)
-   ELSE
-     BW = BUILDING_WIDTH(1)
-     STW = STREET_WIDTH(1)
-   END IF
+   BW = hgt_urb * lp_urb / lambda_f_mean
+   STW = BW * (1. / SQRT(MIN(lp_urb, 1.)) - 1.)
+   BW = MIN(MAX(BW, 5.), 100.)
+   STW = MIN(MAX(STW, 2.), 200.)
 
  !Assign NUDAPT Parameters
    ZR = mh_urb
